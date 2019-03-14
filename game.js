@@ -65,11 +65,20 @@ function main() {
     const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
     const program =  createProgram(gl, vertexShader, fragmentShader);
     gl.useProgram(program);
-
+	
+	const positions = [
+        0, 0, 
+		1, 0, 
+		0, 1,
+        0, 0,
+		0, 1,
+		-1, 0,
+    ];
+	
     // Initialise the array buffer to contain the points of the triangle
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([0,0,1,0,0,1]), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(positions), gl.STATIC_DRAW);
 
     // Set up the position attribute
     // Note: This has to happen /after/ the array buffer is bound
@@ -80,10 +89,14 @@ function main() {
     const rotationUniform = gl.getUniformLocation(program, "u_rotation");
 
     // === Per Frame operations ===
-
+	
+	let currentAngle = 0;
+	
     let update = function(deltaTime) {
+		currentAngle += deltaTime;
+		console.log(currentAngle);
     };
-
+	
     let render = function() {
         // clear the screen
         gl.viewport(0, 0, canvas.width, canvas.height);        
@@ -91,9 +104,28 @@ function main() {
         gl.clear(gl.COLOR_BUFFER_BIT);
 
         // draw a triangle
-        gl.drawArrays(gl.TRIANGLES, 0, 3);   
+        gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
     };
 
     render();
+	
+	let pSeconds = 0;
+	let animate = function(milliseconds) {
+		window.requestAnimationFrame(animate);
+		
+		console.assert(milliseconds >= 0); //possibly unnecessary
+		
+		const seconds = milliseconds / 1000;
+		const deltaTime = seconds - pSeconds;
+		
+		update(deltaTime);
+		seconds = pSeconds;
+		
+		update();
+		render();
+		requestAnimationFrame(animate);
+	}
+	
+	animate(0);
 }    
 
