@@ -4,9 +4,24 @@
 
 const vertexShaderSource = `
 attribute vec4 a_position;
+uniform float u_rotation; //radians
+uniform vec2 u_translation; 
+uniform vec2 u_scale;
 
 void main() {
-  gl_Position = a_position;
+	//rotate
+	float x = a_position.x * cos(u_rotation) - a_position.y * sin(u_rotation);
+	float y = a_position.x * sin(u_rotation) + a_position.y * cos(u_rotation);
+	
+	//translate
+	x = x + u_translation.x;
+	y = y + u_translation.y;
+	
+	//scale
+	float x0 = a_position.x * u_scale.x;
+	float y0 = a_position.y * u_scale.y;
+	
+	gl_Position = vec4(x,y,0,1);
 }
 `;
 
@@ -50,7 +65,26 @@ function createProgram(gl, vertexShader, fragmentShader) {
 function main() {
 
     // === Initialisation ===
-
+	
+	let downKeyPressed = false;
+	
+	document.addEventListener("keydown", function(event) {
+		switch (event.key) {
+			case "ArrowDown":
+				downKeyPressed = true;
+				break;
+		}
+	});
+	
+	document.addEventListener("keyup", function(event) {
+		switch (event.key) {
+			case "ArrowDown":
+				downKeyPressed = false;
+				break;
+		}
+	});
+	
+	
     // get the canvas element & gl rendering 
     const canvas = document.getElementById("c");
     const gl = canvas.getContext("webgl");
@@ -87,22 +121,57 @@ function main() {
     gl.vertexAttribPointer(positionAttribute, 2, gl.FLOAT, false, 0, 0);
 
     const rotationUniform = gl.getUniformLocation(program, "u_rotation");
+	
+	const translationUniform = gl.getUniformLocation(program, "u_translation");
+	
+	const scaleUniform = gl.getUniformLocation(program, "u_scale");
 
     // === Per Frame operations ===
 	
-	let currentAngle = 0;
+	let angle = 0;
+	const turnSpeed = 1;
+	let dx = 0;
+	let dy = 0;
+	const speed = 0.5;
 	
     let update = function(deltaTime) {
-		currentAngle += deltaTime;
-		console.log(currentAngle);
+		angle += turnSpeed * deltaTime;
+		if (downKeyPressed) {
+			dy -= speed * deltaTime;
+		}
     };
+		
+	const resolution = window.devicePixelRatio || 1.0;
 	
+	let resizeCanvas = function() {
+		const displayWidth = Math.floor(canvas.clientWidth * resolution);
+		const displayHeight = Math.floor(canvas.clientHeight * resolution);
+		
+		if (canvas.width !== displayWidth || canvas.height !== displayHeight) {
+			canvas.width = canvas.clientWidth;
+			canvas.height = canvas.clientHeight;
+			return true;
+		} else {
+			return false;
+		}
+	}
+		
     let render = function() {
         // clear the screen
         gl.viewport(0, 0, canvas.width, canvas.height);        
         gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
-
+		
+		gl.uniform1f(rotationUniform, angle);
+		
+		gl.uniform2f(translationUniform, dx, dy);
+		
+		let sx = 2 * resolution / canvas.width;
+		let sy = 2 * resolution / canvas.height;
+		
+		//console.log(window.devicePixelRatio);
+		gl.uniform2f(scaleUniform, sx, sy);
+		
         // draw a triangle
         gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
     };
@@ -111,19 +180,17 @@ function main() {
 	
 	let pSeconds = 0;
 	let animate = function(milliseconds) {
-		window.requestAnimationFrame(animate);
-		
-		console.assert(milliseconds >= 0); //possibly unnecessary
-		
+				
+		console.assert(milliseconds >= 0);
+		//console.log(pSeconds);
 		const seconds = milliseconds / 1000;
 		const deltaTime = seconds - pSeconds;
+		pSeconds = seconds;
 		
+		resizeCanvas();
 		update(deltaTime);
-		seconds = pSeconds;
-		
-		update();
 		render();
-		requestAnimationFrame(animate);
+		window.requestAnimationFrame(animate);
 	}
 	
 	animate(0);
