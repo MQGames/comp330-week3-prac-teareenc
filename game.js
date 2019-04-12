@@ -7,19 +7,20 @@ attribute vec4 a_position;
 uniform float u_rotation; //radians
 uniform vec2 u_translation; 
 uniform vec2 u_scale;
+uniform float u_aspect;
 
 void main() {
-	//rotate
-	float x = a_position.x * cos(u_rotation) - a_position.y * sin(u_rotation);
-	float y = a_position.x * sin(u_rotation) + a_position.y * cos(u_rotation);
-	
-	//translate
-	x = x + u_translation.x;
-	y = y + u_translation.y;
-	
 	//scale
 	float x0 = a_position.x * u_scale.x;
 	float y0 = a_position.y * u_scale.y;
+	
+	//rotate
+	float x = x0 * cos(u_rotation) - y0 * sin(u_rotation);
+	float y = x0 * sin(u_rotation) + y0 * cos(u_rotation);
+	
+	//translate
+	x = (x + u_translation.x) / u_aspect;
+	y = y + u_translation.y;
 	
 	gl_Position = vec4(x,y,0,1);
 }
@@ -125,6 +126,7 @@ function main() {
 	const translationUniform = gl.getUniformLocation(program, "u_translation");
 	
 	const scaleUniform = gl.getUniformLocation(program, "u_scale");
+	const aspectUniform = gl.getUniformLocation(program, "u_aspect");
 
     // === Per Frame operations ===
 	
@@ -140,10 +142,9 @@ function main() {
 			dy -= speed * deltaTime;
 		}
     };
-		
-	const resolution = window.devicePixelRatio || 1.0;
-	
+
 	let resizeCanvas = function() {
+		const resolution = window.devicePixelRatio || 1.0;
 		const displayWidth = Math.floor(canvas.clientWidth * resolution);
 		const displayHeight = Math.floor(canvas.clientHeight * resolution);
 		
@@ -166,11 +167,15 @@ function main() {
 		
 		gl.uniform2f(translationUniform, dx, dy);
 		
-		let sx = 2 * resolution / canvas.width;
-		let sy = 2 * resolution / canvas.height;
+		const aspect = canvas.width / canvas.height;
 		
-		//console.log(window.devicePixelRatio);
-		gl.uniform2f(scaleUniform, sx, sy);
+		//console.log(canvas.width);
+		//console.log(canvas.height);
+		//console.log(sx);
+		//console.log(sy);
+		
+		gl.uniform2f(scaleUniform, 1.0, 1.0);
+		gl.uniform1f(aspectUniform, aspect);
 		
         // draw a triangle
         gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
